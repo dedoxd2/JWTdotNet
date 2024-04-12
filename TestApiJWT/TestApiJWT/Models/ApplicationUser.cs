@@ -11,5 +11,9 @@ namespace TestApiJWT.Models
 
         public string LastName { get; set; }
 
+        internal object NewGuid()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

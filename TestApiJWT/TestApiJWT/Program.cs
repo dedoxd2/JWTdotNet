@@ -11,16 +11,16 @@ using TestApiJWT.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<JWT>(builder.Configuration.GetSection("JWT"));
-builder.Services.AddIdentity<ApplicationUser,IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
-builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.Configure<JWT>(builder.Configuration.GetSection("JWT")); // maping the values in the appsettings.json to the class in the helper file 
+builder.Services.AddIdentity<ApplicationUser,IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>(); // Injecting the Identity framework to the application
+builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));// adding hte connection string 
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+// This section is making JWT is the default authentication and configuring it 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-
 }
 ).AddJwtBearer(
     o => {
@@ -55,7 +55,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseAuthentication();
+app.UseAuthentication(); // Note this line 
 
 app.UseAuthorization();
 
