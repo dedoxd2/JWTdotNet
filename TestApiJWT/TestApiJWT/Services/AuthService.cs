@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Build.Framework;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.AccessControl;
 using System.Security.Claims;
+using System.Text;
 using TestApiJWT.Helper;
 using TestApiJWT.Models;
 
@@ -15,13 +18,8 @@ namespace TestApiJWT.Services
         public AuthService(UserManager<ApplicationUser> userManager , IOptions<JWT> jwt)
         {
             _userManager = userManager;
-            _jwt = jwt.value; 
+            _jwt = jwt.Value; 
         }
-
-
-
-
-
 
 
         public async Task<AuthModel> RegisterAsync(RegisterModel model)
@@ -60,29 +58,22 @@ namespace TestApiJWT.Services
             await _userManager.AddToRoleAsync(user,"User");
 
 
-            var jwtSecurityToken = CreateJwtTokenAsync(user);
+            var jwtSecurityToken = await CreateJwtTokenAsync(user);
+
 
             return new AuthModel
             {
                 Email = user.Email,
                 ExpiresOn = jwtSecurityToken.ValidTo,
                 IsAuthenticated = true,
-                Roles = new List<string> { "User"},
-                Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken),
+                Roles = new List<string> { "User" },
+                Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken), //await jwtSecurityToken.ConfigureAwait(false)),
                 Username = user.UserName
 
             };
 
 
         }
-
-
-
-
-
-
-
-
 
 
         private async Task<JwtSecurityToken> CreateJwtTokenAsync(ApplicationUser user)
@@ -99,7 +90,7 @@ namespace TestApiJWT.Services
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub,user.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, user.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("uid",user.Id)
             }.Union(userClaims)
@@ -107,7 +98,7 @@ namespace TestApiJWT.Services
 
             // To be Contunied
 
-            var symmetricSecurityKey = new SymmetricSercurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
+            var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
             var signingCredentials = new SigningCredentials(symmetricSecurityKey,SecurityAlgorithms.HmacSha256);
             var jwtSecurityToken = new JwtSecurityToken(
                 issuer: _jwt.Issuer,
