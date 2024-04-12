@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Build.Framework;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -20,8 +22,6 @@ namespace TestApiJWT.Services
             _userManager = userManager;
             _jwt = jwt.Value; 
         }
-
-
         public async Task<AuthModel> RegisterAsync(RegisterModel model)
         {
             if (await _userManager.FindByEmailAsync(model.Email) != null)
@@ -39,9 +39,7 @@ namespace TestApiJWT.Services
                 LastName = model.LastName,
                 Email = model.Email,
                 UserName = model.UserName
-
             };
-
             var result =      await _userManager.CreateAsync(user,model.Password);
 
             if (!result.Succeeded)
@@ -54,12 +52,9 @@ namespace TestApiJWT.Services
 
                 return new AuthModel() { Message = errs };
             }
-
             await _userManager.AddToRoleAsync(user,"User");
 
-
             var jwtSecurityToken = await CreateJwtTokenAsync(user);
-
 
             return new AuthModel
             {
@@ -71,10 +66,7 @@ namespace TestApiJWT.Services
                 Username = user.UserName
 
             };
-
-
         }
-
 
         private async Task<JwtSecurityToken> CreateJwtTokenAsync(ApplicationUser user)
         {
@@ -110,6 +102,39 @@ namespace TestApiJWT.Services
             return jwtSecurityToken;
 
         }
+
+        public async Task<AuthModel> GetToken(TokenRequestModel model)
+        {
+            var authModel = new AuthModel(); //{ };
+
+            var user = await _userManager.FindByEmailAsync(model.Email);    
+            if (user == null || ! await _userManager.CheckPasswordAsync(user, model.Password)) 
+            {
+                authModel.Message = "Email or Password is Incorrect!";
+                return authModel;
+            }
+
+            authModel.IsAuthenticated = true;
+            var jwtSecurityToken = await CreateJwtTokenAsync(user);
+            var rolesList = await _userManager.GetRolesAsync(user);
+            
+            
+            
+            authModel.Roles = rolesList.ToList();
+            authModel.ExpiresOn = jwtSecurityToken.ValidTo;
+            authModel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+            authModel.Email = user.Email;
+            authModel.Username = user.UserName;
+            authModel.ExpiresOn = jwtSecurityToken.ValidTo;
+
+ 
+
+
+            return authModel;
+
+
+        }
+
 
     }
 }
