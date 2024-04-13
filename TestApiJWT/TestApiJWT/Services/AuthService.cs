@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Build.Framework;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Claims;
 using System.Text;
@@ -17,9 +19,11 @@ namespace TestApiJWT.Services
     {
         private readonly UserManager<ApplicationUser> _userManager; // we must use it so we can 
         private readonly JWT _jwt;
-        public AuthService(UserManager<ApplicationUser> userManager , IOptions<JWT> jwt)
+        private readonly RoleManager<IdentityRole> _roleManager;
+        public AuthService(UserManager<ApplicationUser> userManager , IOptions<JWT> jwt , RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _jwt = jwt.Value; 
         }
         public async Task<AuthModel> RegisterAsync(RegisterModel model)
@@ -131,6 +135,31 @@ namespace TestApiJWT.Services
 
 
             return authModel;
+
+
+        }
+
+        public async Task<string> AddRoleAsync(AddRoleModel model)
+        {
+            var user = await _userManager.FindByIdAsync(model.UserId);
+            if (user == null || !await _roleManager.RoleExistsAsync(model.Role))
+                return "Invalid User ID or Role";
+
+
+            if (await _userManager.IsInRoleAsync(user, model.Role))
+                return "User already in this role";
+
+
+            var result = await _userManager.AddToRoleAsync(user, model.Role);
+         
+            
+            
+            return result.Succeeded ? string.Empty : "Something Went Wrong";
+
+/*            if (result.Succeeded)
+                return string.Empty;
+
+            return "Something Went Wrong";*/
 
 
         }

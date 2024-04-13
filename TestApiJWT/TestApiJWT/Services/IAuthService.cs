@@ -6,5 +6,7 @@ namespace TestApiJWT.Services
     {
         Task<AuthModel> RegisterAsync(RegisterModel model);
         Task<AuthModel> GetToken(TokenRequestModel model);
+        Task<string> AddRoleAsync(AddRoleModel user);
+    
     }
 }
