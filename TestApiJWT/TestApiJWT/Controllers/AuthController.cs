@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using TestApiJWT.Models;
 using TestApiJWT.Services;
@@ -17,6 +18,11 @@ namespace TestApiJWT.Controllers
             _authService = authService;
         }
 
+     
+        
+        
+        
+        
         [HttpPost("register")]
         public async Task<IActionResult> RegisterAsync([FromBody]RegisterModel model)
         {
@@ -29,6 +35,7 @@ namespace TestApiJWT.Controllers
             if (result.IsAuthenticated)
             {
                 //   return Ok(result);
+                SetRefreshTokenInCookie(result.Token, result.RefreshTokenExpiration);
 
                 return Ok(new
                 {
@@ -55,6 +62,8 @@ namespace TestApiJWT.Controllers
               
             if (!result.IsAuthenticated)
                 return BadRequest(result.Message);
+            if(!string.IsNullOrEmpty(result.RefreshToken))
+                SetRefreshTokenInCookie(result.Token,result.RefreshTokenExpiration);
             
 
             return Ok(result);
@@ -78,6 +87,50 @@ namespace TestApiJWT.Controllers
         }
 
 
+        private void SetRefreshTokenInCookie(string refreshToken , DateTime expires)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Expires = expires.ToLocalTime()
+            };
+            Response.Cookies.Append("refreshToken" , refreshToken , cookieOptions);
+        }
+
+
+
+        [HttpGet("refreshtoken")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            var refreshToken = Request.Cookies["refreshToken"];
+            var result = await _authService.RefreshTokenAsync(refreshToken);
+
+            if (!result.IsAuthenticated)
+                return BadRequest(result);
+            SetRefreshTokenInCookie(result.RefreshToken, result.RefreshTokenExpiration);
+
+            return Ok(result);
+        }
+
+
+        [HttpPost("revoke-token")]
+        public async Task<IActionResult> RevokeToken([FromBody] RevokeToken model)    
+        {
+
+            var token = model.Token ?? Request.Cookies["refreshToken"];
+
+            if (string.IsNullOrEmpty(token))
+                return BadRequest("Token is required");
+
+            var result =   await  _authService.RevokeTokenAsync(token);
+
+            if (!result)
+                return BadRequest("Token is Invalid");
+
+
+            return Ok();
+
+        }
 
     }
 }
