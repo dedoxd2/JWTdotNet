@@ -36,7 +36,7 @@ namespace TestApiJWT.Controllers
                     LastName = model.LastName,
                     Email = model.Email,
                     Token = result.Token,
-                    ExpiresOn = result.ExpiresOn
+               //     ExpiresOn = result.ExpiresOn
                 }); // Return Custom Data
 
             }
@@ -51,7 +51,7 @@ namespace TestApiJWT.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
             
-            var result = await _authService.GetToken(model);
+            var result = await _authService.GetTokenAsync(model);
               
             if (!result.IsAuthenticated)
                 return BadRequest(result.Message);

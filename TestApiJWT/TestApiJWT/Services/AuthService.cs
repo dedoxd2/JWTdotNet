@@ -9,9 +9,12 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using TestApiJWT.Helper;
 using TestApiJWT.Models;
+using System.Security.Cryptography;
+using Microsoft.Identity.Client;
 
 namespace TestApiJWT.Services
 {
@@ -63,7 +66,7 @@ namespace TestApiJWT.Services
             return new AuthModel
             {
                 Email = user.Email,
-                ExpiresOn = jwtSecurityToken.ValidTo,
+                //ExpiresOn = jwtSecurityToken.ValidTo,
                 IsAuthenticated = true,
                 Roles = new List<string> { "User" },
                 Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken), //await jwtSecurityToken.ConfigureAwait(false)),
@@ -107,7 +110,7 @@ namespace TestApiJWT.Services
 
         }
 
-        public async Task<AuthModel> GetToken(TokenRequestModel model)
+        public async Task<AuthModel> GetTokenAsync(TokenRequestModel model)
         {
             var authModel = new AuthModel(); //{ };
 
@@ -125,12 +128,27 @@ namespace TestApiJWT.Services
             
             
             authModel.Roles = rolesList.ToList();
-            authModel.ExpiresOn = jwtSecurityToken.ValidTo;
             authModel.Token = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
             authModel.Email = user.Email;
             authModel.Username = user.UserName;
-            authModel.ExpiresOn = jwtSecurityToken.ValidTo;
+            //authModel.ExpiresOn = jwtSecurityToken.ValidTo;
 
+            if(user.RefreshTokens.Any(t => t.IsActive ))
+            {
+                var activeRefreshToken = user.RefreshTokens.FirstOrDefault(t => t.IsActive);
+                authModel.RefreshToken = activeRefreshToken.Token;
+                authModel.RefreshTokenExpiration = activeRefreshToken.ExpiresOn;
+            }
+            else
+            {
+
+                var refreshToken = GenerateRefreshToken(authModel);
+                authModel.RefreshToken = refreshToken.Token;
+                authModel.RefreshTokenExpiration = refreshToken.ExpiresOn;
+                user.RefreshTokens.Add(refreshToken);
+                await _userManager.UpdateAsync(user);
+
+            }
  
 
 
@@ -156,12 +174,28 @@ namespace TestApiJWT.Services
             
             return result.Succeeded ? string.Empty : "Something Went Wrong";
 
-/*            if (result.Succeeded)
+               /*if (result.Succeeded)
                 return string.Empty;
 
             return "Something Went Wrong";*/
 
 
+        }
+
+
+
+        private RefreshToken GenerateRefreshToken(AuthModel model)
+        {
+            var randomNumber = new byte[32];
+            using var generator = new RNGCryptoServiceProvider();
+            generator.GetBytes(randomNumber);
+
+            return new RefreshToken
+            {
+                Token = Convert.ToBase64String(randomNumber),
+                ExpiresOn = DateTime.UtcNow.AddDays(10),
+                CreatedOn = DateTime.UtcNow
+            };
         }
 
 
